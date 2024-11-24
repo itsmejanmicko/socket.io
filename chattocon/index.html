@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Chat App</title>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center">
+    <main class="bg-white w-full max-w-md rounded-lg shadow-lg p-6 flex flex-col gap-4">
+        <button id="connect" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition">
+            Connect to Chat
+        </button>
+        <div class="flex items-center gap-2">
+            <input id="textfield" type="text" placeholder="Enter your message here"
+                class="flex-grow border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button id="send" class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition">
+                Send
+            </button>
+        </div>
+        <div id="messages"
+            class="bg-gray-50 border border-gray-300 rounded-lg p-4 h-64 overflow-y-auto flex flex-col gap-3">
+        </div>
+    </main>
+    <script type="module">
+        const socket = io();
+        const connect = document.getElementById('connect');
+        const textfield = document.getElementById('textfield');
+        const send = document.getElementById('send');
+        const messages = document.getElementById('messages');
+
+        let myId;
+
+        socket.on('connect', () => {
+            myId = socket.id;
+        });
+
+        connect.addEventListener('click', () => {
+            socket.emit('connectToChat');
+            connect.textContent = "Searching for a match...";
+            connect.disabled = true;
+            connect.classList.add('bg-gray-400', 'cursor-not-allowed');
+        });
+
+        send.addEventListener('click', () => {
+            const message = textfield.value.trim();
+            if (message) {
+                socket.emit('sendMessage', { message });
+                textfield.value = '';
+            }
+        });
+
+        socket.on('queUpdate', (que) => {
+            console.log('Queue Updated:', que);
+        });
+
+        socket.on('matchFound', (data) => {
+            connect.textContent = `Matched! Room: ${data.room}`;
+            connect.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            connect.classList.add('bg-blue-500');
+            connect.disabled = false;
+        });
+
+        socket.on('message', (data) => {
+            const newMessage = document.createElement('div');
+            newMessage.classList.add('message', 'p-3', 'rounded-lg', 'max-w-[60%]', 'break-words');
+
+            if (data.sender === myId) {
+                newMessage.classList.add('bg-green-100', 'self-end', 'text-right');
+            } else {
+                newMessage.classList.add('bg-gray-100', 'self-start', 'text-left');
+            }
+
+            newMessage.textContent = `${data.sender === myId ? 'You' : data.sender}: ${data.message}`;
+            messages.appendChild(newMessage);
+
+            messages.scrollTop = messages.scrollHeight;
+        });
+    </script>
+</body>
+
+</html>
